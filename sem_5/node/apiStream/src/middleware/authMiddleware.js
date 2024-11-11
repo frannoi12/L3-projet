@@ -6,7 +6,8 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
 
 export default function authenticateToken(req, res, next) {
-    if (req.originalUrl != '/auth/login') {
+    const openRoutes = ['/auth/login', '/docs'];
+    if (!openRoutes.includes(req.originalUrl)) {
         const token = req.headers['authorization']?.split(' ')[1];
         // console.log(token);
         

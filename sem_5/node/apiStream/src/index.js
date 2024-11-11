@@ -4,7 +4,10 @@ import VideosRouter from "./routes/VideosRouter.js";
 import AuthRouter from "./routes/AuthRouter.js";
 // import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import authMiddlware from "./middleware/authMiddleware.js"
+// import authMiddlware from "./middleware/authMiddleware.js"
+
+// import swaggerUi from "swagger-ui-express";
+import { swaggerUi, specs } from "./swagger.js";
 
 dotenv.config();
 
@@ -42,7 +45,7 @@ const userRouter = new UserRouter();
 const videoRouter = new VideosRouter();
 const authRouter = new AuthRouter();
 
-app.use(authMiddlware)
+// app.use(authMiddlware)
 
 app.use(express.json())
 app.use('/users',userRouter.getRouter());
@@ -50,6 +53,7 @@ app.use('/videos',videoRouter.getRouter());
 app.use('/auth',authRouter.getRouter());
 
 
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 
 

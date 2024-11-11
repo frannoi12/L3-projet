@@ -13,6 +13,17 @@ export default class VideosRouter {
     }
 
     initializeRoutes() {
+
+        /**
+     * @swagger
+     * /videos:
+     *   get:
+     *     summary: Récupère toutes les vidéos
+     *     tags: [Videos]
+     *     responses:
+     *       200:
+     *         description: Liste de toutes les vidéos
+     */
         this.router.get('/', this.videoController.getVideos.bind(this.videoController));
         this.router.get('/:id', this.videoController.getVideo.bind(this.videoController));
         this.router.post('/create', this.videoController.createVideo.bind(this.videoController));
