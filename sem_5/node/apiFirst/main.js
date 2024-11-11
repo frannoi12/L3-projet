@@ -1,0 +1,167 @@
+import fs from "node:fs/promises"
+import express from "express"
+import bordyParser from "body-parser"
+
+// const express = require('express');
+
+const app = express()
+const port = 3000;
+
+
+app.use(bordyParser.json())
+
+
+app.get('/eleves', async (req, res) => {
+    // console.log(fs.open('db.json','r'));
+    const file = await fs.open('db.json');
+    const db_content = await file.readFile({
+        encoding : "utf-8"
+    });
+    file.close();
+
+    console.log(typeof db_content)
+    res.json(JSON.parse(db_content))
+});
+
+
+
+
+app.get('/elevesAdd', async (req, res) => {
+    const newEleve = {
+        id: 6, 
+        nom: "DUPONT",
+        prenom: "Marie",
+        niveau: ["L1", "L2", "L3"]
+    };
+
+    // Lecture du fichier existant
+    const file = await fs.open('db.json');
+    const db_content = await file.readFile({
+        encoding : "utf-8"
+    });
+
+    const list = JSON.parse(db_content)
+    list.push(newEleve);
+
+    file.close();
+
+
+    await fs.writeFile('db.json', JSON.stringify(list, null, 2)); 
+
+    res.json(JSON.parse(db_content))
+    
+    // res.json(list)
+});
+
+
+
+
+app.put('/elevesUpdate/:id', (req, res) => {
+    const { id } = req.params;
+    const updatedData = req.body;
+
+    fs.open('db.json')
+        .then(file => file.readFile({ encoding: 'utf-8' }))
+        .then(db_content => {
+            let list = JSON.parse(db_content);
+            const eleveIndex = list.findIndex(eleve => eleve.id == id);
+
+            if (eleveIndex !== -1) {
+                list[eleveIndex] = { ...list[eleveIndex], ...updatedData };
+                fs.writeFile('db.json', JSON.stringify(list, null, 2));
+                res.json({ message: "Élève mis à jour", updatedEleve: list[eleveIndex] });
+            } else {
+                res.json({ message: "Élève non trouvé" });
+            }
+        });
+});
+
+
+
+
+app.delete('/elevesDelete/:id', (req, res) => {
+    const { id } = req.params;
+
+    fs.open('db.json')
+        .then(file => file.readFile({ encoding: 'utf-8' }))
+        .then(db_content => {
+            let list = JSON.parse(db_content);
+            const newList = list.filter(eleve => eleve.id != id);
+
+            if (newList.length !== list.length) {
+                fs.writeFile('db.json', JSON.stringify(newList, null, 2));
+                res.json({ message: "Élève supprimé" });
+            } else {
+                res.json({ message: "Élève non trouvé" });
+            }
+        });
+});
+
+
+
+
+
+
+
+
+app.post('/elevesAjouter', async (req, res) => {
+    const eleve_data = req.body;
+    console.log(eleve_data)
+    
+    let file_db = await fs.open("db.json")
+    const strig_elvs = await file_db.readFile({
+        "encoding" : "utf-8"
+    })
+    file_db.close()
+
+    const list_eleves = JSON.parse(strig_elvs)
+    // console.log(list_eleves);
+    list_eleves.push(eleve_data)
+    console.log(list_eleves);
+
+    let fil_db = await fs.open("db.json","w")
+    await fil_db.writeFile(JSON.stringify(eleve_data))
+    fil_db.close()
+
+    res.send("Créer");
+});
+
+
+
+
+
+
+
+
+
+
+app.get('/', (req, res) => {
+
+    const nom = req.query.nom;
+
+    if (nom) {
+        res.send(`Votre nom est ${nom}`);
+    } else {
+        res.send('Veuillez fournir un nom en utilisant le paramètre ?nom=votre_nom');
+    }
+});
+
+
+// app.get('/eleves', (req, res) => {
+//     // console.log(res);
+//     res.send('Bonjour liste des eleves')
+// });
+
+
+// app.get('/eleve/:numero', (req, res) => {
+//     const {numero} = req.params
+//     // console.log(res);
+//     res.send('Détail de l\'élève N°'+numero)
+// });
+
+
+
+
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
