@@ -1,0 +1,207 @@
+Pour ajouter l'authentification à votre API en Node.js, vous pouvez utiliser JWT (JSON Web Tokens). Voici comment procéder pour intégrer l'authentification à l'API que nous avons déjà mise en place.
+
+### Étape 1 : Installer les dépendances nécessaires
+
+Installez les bibliothèques nécessaires pour gérer l'authentification et le cryptage des mots de passe :
+
+```bash
+npm install bcryptjs jsonwebtoken
+```
+
+### Étape 2 : Ajouter des routes pour l'authentification
+
+Modifiez votre fichier `index.js` pour inclure les routes d'inscription et de connexion.
+
+Voici un exemple de code mis à jour :
+
+```javascript
+const express = require('express');
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const swaggerJsDoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+
+const app = express();
+const prisma = new PrismaClient();
+
+app.use(express.json());
+
+// Middleware pour vérifier le token
+const authenticateToken = (req, res, next) => {
+  const token = req.headers['authorization'] && req.headers['authorization'].split(' ')[1];
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// Swagger setup
+const swaggerOptions = {
+  swaggerDefinition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'My API',
+      version: '1.0.0',
+      description: 'API documentation',
+    },
+    servers: [
+      {
+        url: 'http://localhost:3000',
+      },
+    ],
+  },
+  apis: ['./index.js'],
+};
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+// Routes
+app.post('/register', async (req, res) => {
+  const { name, email, password } = req.body;
+
+  // Vérifier si l'utilisateur existe déjà
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    return res.status(400).json({ message: 'User already exists' });
+  }
+
+  // Hachage du mot de passe
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Créer un nouvel utilisateur
+  const newUser = await prisma.user.create({
+    data: { name, email, password: hashedPassword },
+  });
+
+  res.status(201).json({ id: newUser.id, name: newUser.name, email: newUser.email });
+});
+
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Login user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User logged in
+ */
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  // Trouver l'utilisateur
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+  // Vérifier le mot de passe
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) return res.status(400).json({ message: 'Invalid credentials' });
+
+  // Générer un token
+  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+  res.json({ token });
+});
+
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Retrieve a list of users
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of users
+ */
+app.get('/users', authenticateToken, async (req, res) => {
+  const users = await prisma.user.findMany();
+  res.json(users);
+});
+
+// Start server
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+```
+
+### Étape 3 : Ajouter les variables d'environnement
+
+Ajoutez une clé secrète pour JWT dans votre fichier `.env` :
+
+```env
+JWT_SECRET=your_secret_key
+```
+
+### Étape 4 : Mettre à jour Prisma
+
+N'oubliez pas de modifier votre modèle Prisma pour inclure le champ `password` :
+
+```prisma
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+}
+```
+
+Ensuite, exécutez les migrations pour mettre à jour la base de données :
+
+```bash
+npx prisma migrate dev --name add_password_field
+```
+
+### Étape 5 : Démarrer l'application et tester
+
+1. **Démarrez le serveur :**
+
+   ```bash
+   node index.js
+   ```
+
+2. **Inscription d'un utilisateur :**
+
+   Utilisez Postman ou cURL pour tester l'inscription :
+
+   ```bash
+   curl -X POST http://localhost:3000/register -H "Content-Type: application/json" -d '{"name": "John Doe", "email": "john@example.com", "password": "password123"}'
+   ```
+
+3. **Connexion d'un utilisateur :**
+
+   Testez la connexion :
+
+   ```bash
+   curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"email": "john@example.com", "password": "password123"}'
+   ```
+
+   Vous recevrez un token JWT en retour.
+
+4. **Accéder aux utilisateurs :**
+
+   Utilisez le token JWT pour accéder à la route protégée :
+
+   ```bash
+   curl -X GET http://localhost:3000/users -H "Authorization: Bearer YOUR_JWT_TOKEN"
+   ```
+
+### Conclusion
+
+Vous avez maintenant une API avec authentification par JWT, utilisant Express, Prisma et Swagger pour la documentation. Vous pouvez étendre cette API avec d'autres fonctionnalités et modèles selon vos besoins. Si vous avez des questions ou si vous avez besoin de plus d'aide, n'hésitez pas à demander !

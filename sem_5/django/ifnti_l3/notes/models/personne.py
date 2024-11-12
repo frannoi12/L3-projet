@@ -25,9 +25,6 @@ class Personne(models.Model):
         # Appel à la méthode save de la classe parente
         super().save(*args, **kwargs)
 
-
-    class Meta:
-        abstract = True 
     
     def __str__(self):
         return f"{self.nom} {self.prenom}"

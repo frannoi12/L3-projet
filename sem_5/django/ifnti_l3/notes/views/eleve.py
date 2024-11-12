@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 # from django.http import HttpResponse
 from notes.models import Eleve,Note
 from notes.forms.EleveForm import EleveForm
+from django.contrib.auth.decorators import login_required, permission_required
 
 
 
@@ -11,7 +12,8 @@ from notes.forms.EleveForm import EleveForm
 
 
 # Vue pour la liste des élèves avec leurs matières et moyennes
-
+@login_required
+@permission_required('notes.view_eleve', raise_exception=True)
 def eleves(request):
     # Récupère tous les élèves depuis la base de données
     eleves_list = Eleve.objects.all()
@@ -49,18 +51,8 @@ def eleves(request):
     return render(request, 'notes/eleves.html', {'eleves': eleves_with_notes})
 
 
-
-
-# Vue pour la liste des élèves avec leurs notes et moyennes
-# def eleve(request):
-#     liste_eleves = Eleve.objects.all()
-#     return render(request, 'notes/eleves.html', {'eleves': liste_eleves})
-
-
-
-
-# Vue pour le détail d'un élève particulier
-
+@login_required  # Nécessite que l'utilisateur soit connecté
+@permission_required('notes.view_eleve', raise_exception=True)
 def eleve(request, id):
     detail_eleve = get_object_or_404(Eleve, id=id)
     matiere = detail_eleve.matieres.all()
@@ -83,12 +75,10 @@ def eleve(request, id):
         'eleve': detail_eleve,
         'matieres': matiere,
     })
-    
-    # return HttpResponse(detail_eleve,matieres_notes)
 
 
-
-
+@login_required  # Nécessite que l'utilisateur soit connecté
+@permission_required('notes.add_eleve', raise_exception=True)
 def add_eleve(request):
     form = EleveForm()  # Initialiser le formulaire
 
@@ -101,6 +91,41 @@ def add_eleve(request):
             return redirect('notes:eleves')  # Remplacez 'notes:eleves' par le nom correct de votre URL
 
     return render(request, 'notes/add_eleve.html', {'form': form})
+
+
+@login_required  # Nécessite que l'utilisateur soit connecté
+@permission_required('notes.change_eleve', raise_exception=True) 
+def update_eleve(request, id):
+    eleve = get_object_or_404(Eleve, id=id)  # Récupère l'élève par son identifiant
+    if request.method == 'POST':
+        form = EleveForm(request.POST, instance=eleve)  # Prend l'instance existante
+        if form.is_valid():
+            form.save()  # Enregistre les modifications
+            return redirect('eleve_list')  # Redirige vers la liste des élèves
+    else:
+        form = EleveForm(instance=eleve)  # Préremplit le formulaire avec les données de l'élève
+    
+    return render(request, 'notes/update_eleve.html', {'form': form}) 
+
+
+
+
+# Vue pour la liste des élèves avec leurs notes et moyennes
+# def eleve(request):
+#     liste_eleves = Eleve.objects.all()
+#     return render(request, 'notes/eleves.html', {'eleves': liste_eleves})
+
+
+
+
+# Vue pour le détail d'un élève particulier
+
+    
+    
+    # return HttpResponse(detail_eleve,matieres_notes)
+
+
+
 
 
 
@@ -146,17 +171,7 @@ def add_eleve(request):
 
 
 
-def update_eleve(request, id):
-    eleve = get_object_or_404(Eleve, id=id)  # Récupère l'élève par son identifiant
-    if request.method == 'POST':
-        form = EleveForm(request.POST, instance=eleve)  # Prend l'instance existante
-        if form.is_valid():
-            form.save()  # Enregistre les modifications
-            return redirect('eleve_list')  # Redirige vers la liste des élèves
-    else:
-        form = EleveForm(instance=eleve)  # Préremplit le formulaire avec les données de l'élève
-    
-    return render(request, 'notes/update_eleve.html', {'form': form}) 
+
 
 
 
